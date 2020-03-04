@@ -30,7 +30,7 @@ import org.springframework.transaction.TransactionDefinition;
 @SuppressWarnings("serial")
 class ReactiveTestTransactionManager extends AbstractReactiveTransactionManager {
 
-	private static final Object TRANSACTION = "transaction";
+	private static final Object TRANSACTION = "com/app/aop";
 
 	private final boolean existingTransaction;
 

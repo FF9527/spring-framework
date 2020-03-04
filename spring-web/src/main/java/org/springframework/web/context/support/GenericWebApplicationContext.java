@@ -149,10 +149,14 @@ public class GenericWebApplicationContext extends GenericApplicationContext
 	@Override
 	protected void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
 		if (this.servletContext != null) {
+			//注册servletContext相关处理器
+			//忽略servletContext相关的接口
 			beanFactory.addBeanPostProcessor(new ServletContextAwareProcessor(this.servletContext));
 			beanFactory.ignoreDependencyInterface(ServletContextAware.class);
 		}
+		//注册beanfactory的servlet的三个作用域实例，并指定servlet相关类型的bean的创建工厂
 		WebApplicationContextUtils.registerWebApplicationScopes(beanFactory, this.servletContext);
+		//servletContex、servletConfig、contextParameters、contextAttributes实例注册到beanfactory的单例容器中
 		WebApplicationContextUtils.registerEnvironmentBeans(beanFactory, this.servletContext);
 	}
 

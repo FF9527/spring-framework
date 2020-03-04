@@ -250,14 +250,14 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 	 */
 	public int scan(String... basePackages) {
 		int beanCountAtScanStart = this.registry.getBeanDefinitionCount();
-
+		//自动扫描basePackages下的bean，并装载
 		doScan(basePackages);
 
 		// Register annotation config processors, if necessary.
 		if (this.includeAnnotationConfig) {
 			AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);
 		}
-
+		//返回本次自动装配bean的数量
 		return (this.registry.getBeanDefinitionCount() - beanCountAtScanStart);
 	}
 
@@ -273,21 +273,51 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 		Assert.notEmpty(basePackages, "At least one base package must be specified");
 		Set<BeanDefinitionHolder> beanDefinitions = new LinkedHashSet<>();
 		for (String basePackage : basePackages) {
+			//将指定basePackage下每个class初始化一个对应BeanDefinition实例，返回实例的集合
 			Set<BeanDefinition> candidates = findCandidateComponents(basePackage);
 			for (BeanDefinition candidate : candidates) {
 				ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(candidate);
+				//默认scopeMetadata.scopeName = singleton
+				//默认scopeMetadate.scopeProxyMode = no
 				candidate.setScope(scopeMetadata.getScopeName());
+				//此时beandefinition只有三个属性beanClass scope metedata
+				//beanName生成器根据注解中value生成beanName，value为空则根据beanClass生成beanName
+				//首字母+第二字母都是大写字母：直接返回例如AA.class beanName = AA
+				//其他首字母变小写例如Aa.class beanName = aa
 				String beanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
 				if (candidate instanceof AbstractBeanDefinition) {
+					//设置一些默认属性
+					//autowireMode = 0
+					//dependencyCheck = 0
+					//initMethodName = 0
+					//enforceInitMethode = false
+					//destroyMethodName = null
+					//enforceDestroyMethod = false
+					//beanName简单校验正则校验，一般beandefinition.autowiredCandidate = true;
 					postProcessBeanDefinition((AbstractBeanDefinition) candidate, beanName);
 				}
 				if (candidate instanceof AnnotatedBeanDefinition) {
+					//从metadate中获取并设置一些通用属性
+					//lazyinit：取自lazy注解value，默认null
+					//primary：有primary注解true，不注解默认false
+					//dependsOn：取自dependsOn注解value，默认null
+					//role：取自role注解value，默认0
+					//description：取自description注解value，默认null
 					AnnotationConfigUtils.processCommonDefinitionAnnotations((AnnotatedBeanDefinition) candidate);
 				}
 				if (checkCandidate(beanName, candidate)) {
+					//BeanDefintionHolder={beanName = "",beanDefintion = "",aliases = ""}
 					BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(candidate, beanName);
+					//根据scopeMetadate.scopeProxyMode属性决定
+					//ScopedProxyMode.DEFAULT/NO:不创建代理类
+					//ScopedProxyMode.INTERFACES:JDK动态代理创建代理类
+					//ScopedProxyMode.TARGET_CLASS：CGLib创建代理类
+					//如果需要生成代理类，会registerBeanDefinition(targetBean,beanfactory)
+					//下面就是registerBeanDefinition(proxyBean,beanfactory)
 					definitionHolder =
 							AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
+					//若需要生成代理：beanDefinitions中没有targetBean只有proxyBean
+					//beanfactory中两个都有
 					beanDefinitions.add(definitionHolder);
 					registerBeanDefinition(definitionHolder, this.registry);
 				}

@@ -212,6 +212,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 				if (logger.isDebugEnabled()) {
 					logger.debug("Creating shared instance of singleton bean '" + beanName + "'");
 				}
+				//循环依赖相关：初始化前先singletonsCurrentlyInCreation.add(beanName)
 				beforeSingletonCreation(beanName);
 				boolean newSingleton = false;
 				boolean recordSuppressedExceptions = (this.suppressedExceptions == null);
@@ -219,6 +220,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					this.suppressedExceptions = new LinkedHashSet<>();
 				}
 				try {
+					//lamda表达式：其实是调用createBean(beanName, mbd, args):Bean初始化
 					singletonObject = singletonFactory.getObject();
 					newSingleton = true;
 				}
@@ -242,9 +244,15 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					if (recordSuppressedExceptions) {
 						this.suppressedExceptions = null;
 					}
+					//循环依赖相关：初始化后singletonsCurrentlyInCreation.remove(beanName)
 					afterSingletonCreation(beanName);
 				}
 				if (newSingleton) {
+					//初始化完后
+					//this.singletonObjects.put(beanName, singletonObject);放入到单例容器中
+					//this.singletonFactories.remove(beanName);清空循环依赖的两个打标
+					//this.earlySingletonObjects.remove(beanName);
+					//this.registeredSingletons.add(beanName);放入单例beanName容器中
 					addSingleton(beanName, singletonObject);
 				}
 			}

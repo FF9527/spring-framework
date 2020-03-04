@@ -60,6 +60,13 @@ class AnnotationConfigApplicationContextTests {
 	}
 
 	@Test
+	void circulateDependsOn() {
+		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+		context.scan("org.springframework.context.annotation7");
+		context.refresh();
+	}
+
+	@Test
 	void registerAndRefresh() {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 		context.register(Config.class, NameConfig.class);
