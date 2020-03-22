@@ -344,6 +344,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 							throw ex;
 						}
 					});
+					//
 					bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
 				}
 
@@ -1807,8 +1808,11 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	protected Object getObjectForBeanInstance(
 			Object beanInstance, String name, String beanName, @Nullable RootBeanDefinition mbd) {
 
-		// Don't let calling code try to dereference the factory if the bean isn't a factory.
+		//这里的name与beanName需要先说明一下
+		//Bean instanceof FactoryBean的Bean初始化时，name = &beanName
+		//其他情况包括依赖注入时 name = beanName
 		if (BeanFactoryUtils.isFactoryDereference(name)) {
+			//Bean instanceof FactoryBean的Bean初始化时直接返回FactoryBean实例
 			if (beanInstance instanceof NullBean) {
 				return beanInstance;
 			}
@@ -1821,13 +1825,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			return beanInstance;
 		}
 
-		// Now we have the bean instance, which may be a normal bean or a FactoryBean.
-		// If it's a FactoryBean, we use it to create a bean instance, unless the
-		// caller actually wants a reference to the factory.
+		// 没有实现FactoryBean的Bean直接返回Bean实例
 		if (!(beanInstance instanceof FactoryBean)) {
 			return beanInstance;
 		}
-
+		//依赖注入时getBean(name) name = beanName
+		//返回的是FactoryBean.getObject()，并且会缓存
 		Object object = null;
 		if (mbd != null) {
 			mbd.isFactoryBean = true;

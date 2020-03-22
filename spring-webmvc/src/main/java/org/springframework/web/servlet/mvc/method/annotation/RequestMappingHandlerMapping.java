@@ -186,7 +186,7 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 		this.config.setTrailingSlashMatch(useTrailingSlashMatch());
 		this.config.setRegisteredSuffixPatternMatch(useRegisteredSuffixPatternMatch());
 		this.config.setContentNegotiationManager(getContentNegotiationManager());
-
+		//注册RequestMapping
 		super.afterPropertiesSet();
 	}
 
@@ -253,14 +253,21 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 	@Override
 	@Nullable
 	protected RequestMappingInfo getMappingForMethod(Method method, Class<?> handlerType) {
+		//如果方法被@RequestMapping注解
+		//生成一个RequestMappingInfo实例
 		RequestMappingInfo info = createRequestMappingInfo(method);
 		if (info != null) {
+			//如果类被@RequestMapping注解
+			//生成一个RequestMappingInfo实例
 			RequestMappingInfo typeInfo = createRequestMappingInfo(handlerType);
 			if (typeInfo != null) {
+				//合并两个RequestMappingInfo的属性（path除外）
 				info = typeInfo.combine(info);
 			}
 			String prefix = getPathPrefix(handlerType);
 			if (prefix != null) {
+				//最终路径生成
+				//Controller的@RequestMapping.value+Method的@RequestMaping.value
 				info = RequestMappingInfo.paths(prefix).options(this.config).build().combine(info);
 			}
 		}

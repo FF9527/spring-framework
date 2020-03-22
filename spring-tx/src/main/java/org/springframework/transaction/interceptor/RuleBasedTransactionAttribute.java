@@ -151,12 +151,13 @@ public class RuleBasedTransactionAttribute extends DefaultTransactionAttribute i
 			logger.trace("Winning rollback rule is: " + winner);
 		}
 
-		// User superclass behavior (rollback on unchecked) if no rule matches.
+		// 未匹配成功时，默认几个超异常类回滚，RuntimeException || Error
 		if (winner == null) {
 			logger.trace("No relevant rollback rule found: applying default rules");
 			return super.rollbackOn(ex);
 		}
 
+		//不属于
 		return !(winner instanceof NoRollbackRuleAttribute);
 	}
 

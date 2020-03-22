@@ -212,11 +212,18 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	 * @see #handlerMethodsInitialized
 	 */
 	protected void initHandlerMethods() {
+		//getCandidateBeanNames()获取所有实例化的Bean，
+		//注意：DispatcherServlet.initStrategies()是在IOC容器初始化完成后
 		for (String beanName : getCandidateBeanNames()) {
+			//过滤scopedTarget.开头的Bean
 			if (!beanName.startsWith(SCOPED_TARGET_NAME_PREFIX)) {
+				//扫描@Controller或者@RequestMapping注解的类
+				//扫描@RequestMapping注解的方法
+				//注册到映射关系到对应容器中(url-RequestMappingInfo)
 				processCandidateBean(beanName);
 			}
 		}
+		//不可修改视图+打印日志
 		handlerMethodsInitialized(getHandlerMethods());
 	}
 
@@ -246,6 +253,7 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	protected void processCandidateBean(String beanName) {
 		Class<?> beanType = null;
 		try {
+			//获取beanType
 			beanType = obtainApplicationContext().getType(beanName);
 		}
 		catch (Throwable ex) {
@@ -254,6 +262,8 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 				logger.trace("Could not resolve type for bean '" + beanName + "'", ex);
 			}
 		}
+		//检查beanType不为空
+		//并且beanType被@Controller或者@RequestMapping注解
 		if (beanType != null && isHandler(beanType)) {
 			detectHandlerMethods(beanName);
 		}
@@ -265,14 +275,20 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	 * @see #getMappingForMethod
 	 */
 	protected void detectHandlerMethods(Object handler) {
+		//重新获取beanType == handlerType
 		Class<?> handlerType = (handler instanceof String ?
 				obtainApplicationContext().getType((String) handler) : handler.getClass());
 
 		if (handlerType != null) {
 			Class<?> userType = ClassUtils.getUserClass(handlerType);
+			//获取映射关系<Method , RequestMappingInfo>
 			Map<Method, T> methods = MethodIntrospector.selectMethods(userType,
 					(MethodIntrospector.MetadataLookup<T>) method -> {
 						try {
+							//selectMethods中查找beanType的所有方法
+							//然后遍历method，getMappingForMethod获取@RequestMapping信息生成一个RequestMappingInfo实例
+							//重点RequestMappingInfo.path=Controller的@RequestMapping.value+Method的@RequestMaping.value
+							//然后生成映射关系<method,RequestMappingInfo>
 							return getMappingForMethod(method, userType);
 						}
 						catch (Throwable ex) {
@@ -283,8 +299,19 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 			if (logger.isTraceEnabled()) {
 				logger.trace(formatMappings(userType, methods));
 			}
+			//注册映射关系
 			methods.forEach((method, mapping) -> {
 				Method invocableMethod = AopUtils.selectInvocableMethod(method, userType);
+				//注册映射关系到RequestMapHandlerMapping.mappingRegistry的五个容器中
+				//mappingRegistry的类型:org.springframework.web.servlet.handler.AbstractHandlerMethodMapping.MappingRegistry
+				//5个容器全部是Map类型
+				//urlLookup.add(url, mapping);
+				//mappingLookup.put(mapping, handlerMethod);
+				//corsLookup.put(handlerMethod, corsConfig);
+				//registry.put(mapping, new MappingRegistration<>(mapping, handlerMethod, directUrls, name));
+				//nameLookup.put(name, newList);newList=List<handlerMethod>
+				//handlerMethod就是beanName、beanType、beanFactory、method、parameters的封装
+				//其实就是url -> mapping -> handlerMethod ->invoke
 				registerHandlerMethod(handler, invocableMethod, mapping);
 			});
 		}
@@ -593,8 +620,10 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 			if (KotlinDetector.isKotlinType(method.getDeclaringClass()) && KotlinDelegate.isSuspend(method)) {
 				throw new IllegalStateException("Unsupported suspending handler method detected: " + method);
 			}
+			//读写锁
 			this.readWriteLock.writeLock().lock();
 			try {
+				//创建HandlerMethod
 				HandlerMethod handlerMethod = createHandlerMethod(handler, method);
 				validateMethodMapping(handlerMethod, mapping);
 				this.mappingLookup.put(mapping, handlerMethod);

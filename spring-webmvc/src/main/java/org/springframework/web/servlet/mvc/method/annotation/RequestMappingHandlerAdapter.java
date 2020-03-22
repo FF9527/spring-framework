@@ -557,15 +557,20 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	public void afterPropertiesSet() {
 		// Do this first, it may add ResponseBody advice beans
 		initControllerAdviceCache();
-
+		//参数类型解析器（总共注册了20+个解析器）
+		//重点关注：ServletModelAttributeMethodProcessor，后面会用到
 		if (this.argumentResolvers == null) {
 			List<HandlerMethodArgumentResolver> resolvers = getDefaultArgumentResolvers();
 			this.argumentResolvers = new HandlerMethodArgumentResolverComposite().addResolvers(resolvers);
 		}
+		//参数类型赋值器（总共注册了10+个解析器）
+		//重点关注：ServletModelAttributeMethodProcessor，后面会用到
 		if (this.initBinderArgumentResolvers == null) {
 			List<HandlerMethodArgumentResolver> resolvers = getDefaultInitBinderArgumentResolvers();
 			this.initBinderArgumentResolvers = new HandlerMethodArgumentResolverComposite().addResolvers(resolvers);
 		}
+		//返回参数类型解析器（总共注册了10+个解析器）
+		//重点关注：ServletModelAttributeMethodProcessor，后面会用到
 		if (this.returnValueHandlers == null) {
 			List<HandlerMethodReturnValueHandler> handlers = getDefaultReturnValueHandlers();
 			this.returnValueHandlers = new HandlerMethodReturnValueHandlerComposite().addHandlers(handlers);

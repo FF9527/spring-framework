@@ -102,7 +102,11 @@ public class ServletInvocableHandlerMethod extends InvocableHandlerMethod {
 	 */
 	public void invokeAndHandle(ServletWebRequest webRequest, ModelAndViewContainer mavContainer,
 			Object... providedArgs) throws Exception {
-
+		//在RequestMappingHandlerAdapter.argumentResolvers的26个解析器中选择1个合适的解析器
+		// resolver.supportsParameter(parameter)判断哪一个合适
+		// 然后request.param --> method.param
+		// 例如xxx(User user)时选择ServletModelAttributeMethodProcessor
+		// 最后调用方法执行
 		Object returnValue = invokeForRequest(webRequest, mavContainer, providedArgs);
 		setResponseStatus(webRequest);
 
@@ -121,6 +125,11 @@ public class ServletInvocableHandlerMethod extends InvocableHandlerMethod {
 		mavContainer.setRequestHandled(false);
 		Assert.state(this.returnValueHandlers != null, "No return value handlers");
 		try {
+			//在RequestMappingHandlerAdapter.returnValueHandlers的15个解析器中选择1个合适的解析器
+			// handler.supportsReturnType(returnType)判断哪一个合适
+			// 然后method.result --> response.param，
+			// 例如返回@ResponseBody返回json时选择RequestResponseBodyMethodProcessor
+			// 最后返回
 			this.returnValueHandlers.handleReturnValue(
 					returnValue, getReturnValueType(returnValue), mavContainer, webRequest);
 		}

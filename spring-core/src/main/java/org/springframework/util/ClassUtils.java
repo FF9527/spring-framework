@@ -1263,9 +1263,12 @@ public abstract class ClassUtils {
 	 */
 	public static Method getMostSpecificMethod(Method method, @Nullable Class<?> targetClass) {
 		if (targetClass != null && targetClass != method.getDeclaringClass() && isOverridable(method, targetClass)) {
+			//targetClass不为空，且targetClass不是method的声明类，且method方法是重写方法
 			try {
 				if (Modifier.isPublic(method.getModifiers())) {
 					try {
+						//是public方法，则直接返回targetClass的method方法
+						//主要注意的是，上一层if判断，targetClass不是method的声明类，这里必报错，默认会返回method
 						return targetClass.getMethod(method.getName(), method.getParameterTypes());
 					}
 					catch (NoSuchMethodException ex) {
@@ -1273,6 +1276,7 @@ public abstract class ClassUtils {
 					}
 				}
 				else {
+					//如果不是public方法，返回targetClass父类或者父接口的method方法
 					Method specificMethod =
 							ReflectionUtils.findMethod(targetClass, method.getName(), method.getParameterTypes());
 					return (specificMethod != null ? specificMethod : method);

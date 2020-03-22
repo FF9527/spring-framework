@@ -193,9 +193,16 @@ public abstract class AopUtils {
 	 * @see org.springframework.util.ClassUtils#getMostSpecificMethod
 	 */
 	public static Method getMostSpecificMethod(Method method, @Nullable Class<?> targetClass) {
+		// targetClass == null，specificTargetClass = null
+		// targetClass != null，
+		// JDK动态代理spcificTargetClass = targetClasss,
+		// CGLib动态代理spcificTargetClass = superClass
 		Class<?> specificTargetClass = (targetClass != null ? ClassUtils.getUserClass(targetClass) : null);
+		//specificTargetClass == null，resolvedMethod = method
+		//specificTargetClass != null, public方法 resolveMethod = method
+		//非public方法，resolveMethod = superClass.method
 		Method resolvedMethod = ClassUtils.getMostSpecificMethod(method, specificTargetClass);
-		// If we are dealing with method with generic parameters, find the original method.
+		// 泛型方法，找原方法
 		return BridgeMethodResolver.findBridgedMethod(resolvedMethod);
 	}
 

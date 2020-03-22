@@ -235,8 +235,13 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 
 	@Override
 	protected Object doGetTransaction() {
+		//创建一个DataSourceTransactionObject实例
 		DataSourceTransactionObject txObject = new DataSourceTransactionObject();
+		//txObject是否允许保存点，事务嵌套
 		txObject.setSavepointAllowed(isNestedTransactionAllowed());
+		//从当前线程中获取事务连接,ThreadLocal实现
+		//ThreadLocal<Map<Object, Object>> resources = new NamedThreadLocal<>("Transactional resources");
+		//connectionHolder = Thread.currentThread().getThreadLocalMap.get("Transactional resources").get(datasource)
 		ConnectionHolder conHolder =
 				(ConnectionHolder) TransactionSynchronizationManager.getResource(obtainDataSource());
 		txObject.setConnectionHolder(conHolder, false);
@@ -260,6 +265,7 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 		try {
 			if (!txObject.hasConnectionHolder() ||
 					txObject.getConnectionHolder().isSynchronizedWithTransaction()) {
+				//当前线程没有连接 或者 有链接但事务与连接同步，需要新建连接
 				Connection newCon = obtainDataSource().getConnection();
 				if (logger.isDebugEnabled()) {
 					logger.debug("Acquired Connection [" + newCon + "] for JDBC transaction");
@@ -270,14 +276,17 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 			txObject.getConnectionHolder().setSynchronizedWithTransaction(true);
 			con = txObject.getConnectionHolder().getConnection();
 
+			//设置connection.setReadOnly(readOnly):@Transactional中的readOnly属性，默认false
+			//设置connection.setIsolationLevel(isolatianLevel)：@Transaction中的isolation属性，默认default
+			//default不是返回-1，返回null，其他隔离级别返回对应的Integer值
 			Integer previousIsolationLevel = DataSourceUtils.prepareConnectionForTransaction(con, definition);
+			//txObject设置事务隔离级别+是否只读事务
 			txObject.setPreviousIsolationLevel(previousIsolationLevel);
 			txObject.setReadOnly(definition.isReadOnly());
 
-			// Switch to manual commit if necessary. This is very expensive in some JDBC drivers,
-			// so we don't want to do it unnecessarily (for example if we've explicitly
-			// configured the connection pool to set it already).
 			if (con.getAutoCommit()) {
+				//MySQL默认自动提交，创建数据源时，也是配置的自动提交
+				//开启事务后，需要切换到手动提交
 				txObject.setMustRestoreAutoCommit(true);
 				if (logger.isDebugEnabled()) {
 					logger.debug("Switching JDBC Connection [" + con + "] to manual commit");
@@ -285,22 +294,31 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 				con.setAutoCommit(false);
 			}
 
+			//readOnly == true时，只读事务，这里执行sql "set transaction read only"
 			prepareTransactionalConnection(con, definition);
+			//设置connectionHolder属性，正处于事务中
 			txObject.getConnectionHolder().setTransactionActive(true);
 
+			//设置超时时间，默认TransactionDefinition.TIMEOUT_DEFAULT，采用数据库的超时时间
+			//不采用默认时间时，connectionHolder记录超时时间
 			int timeout = determineTimeout(definition);
 			if (timeout != TransactionDefinition.TIMEOUT_DEFAULT) {
 				txObject.getConnectionHolder().setTimeoutInSeconds(timeout);
 			}
 
-			// Bind the connection holder to the thread.
+
 			if (txObject.isNewConnectionHolder()) {
+				// connection是新连接，将connectionHolder放入到线程中
+				// ThreadLocal实现,TransactionSynchronizationManager.resources
+				//泛型是ThreadLocal<Map<dataSource, connectionHolder>>
+				//存储格式currentThread.getThreadLocalMap.get(resources).put(dataSource,connectionHolder)
 				TransactionSynchronizationManager.bindResource(obtainDataSource(), txObject.getConnectionHolder());
 			}
 		}
 
 		catch (Throwable ex) {
 			if (txObject.isNewConnectionHolder()) {
+				//新连接创建失败时，释放连接，清除connectionHolder信息然后抛出错误
 				DataSourceUtils.releaseConnection(con, obtainDataSource());
 				txObject.setConnectionHolder(null, false);
 			}
